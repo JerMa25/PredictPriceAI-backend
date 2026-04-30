@@ -1,8 +1,12 @@
-import email
 import json
 import os
 import bcrypt
+from itsdangerous import URLSafeTimedSerializer
+from django.conf import settings
+from django.core.mail import send_mail
 
+SECRET_KEY = settings.SECRET_KEY
+serializer = URLSafeTimedSerializer(SECRET_KEY)
 ADMIN_DATA_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
     "login-data", "admin.json"
@@ -63,3 +67,26 @@ def admin_login_session(request) -> None:
 def admin_logout_session(request) -> None:
     """Termine la session de l'administrateur lors de la déconnexion."""
     request.session.flush()
+
+def generate_reset_token(email: str) -> str:
+    return serializer.dumps(email, salt='reset-password')
+
+def verify_reset_token(token: str, expiration=3600) -> str:
+    try:
+        email = serializer.loads(
+            token, 
+            salt='reset-password', 
+            max_age=expiration
+        )
+        return email
+    except Exception:
+        return None
+    
+def send_password_reset_email(email: str, token: str) -> None:
+    reset_link = f"https://predictpriceai-backend-production.up.railway.app/reset-password?token={token}"
+    subject = "Password Reset Request"
+    message = f"Click the link below to reset your password:\n\n{reset_link}\n\nThis link will expire in 1 hour."
+    from_email = settings.EMAIL_HOST_USER
+    recipient_list = [email]
+    
+    send_mail(subject, message, from_email, recipient_list, fail_silently=False)

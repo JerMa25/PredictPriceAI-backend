@@ -163,3 +163,149 @@ class AuthentificationViewSet(viewsets.ViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    @extend_schema(
+        description="Envoie un email de réinitialisation du mot de passe à l'administrateur",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "example": "admin@predictprice.cm"
+                    }
+                },
+                "required": ["email"]
+            }
+        },
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean", "example": True},
+                    "message": {
+                        "type": "string",
+                        "example": "Email de réinitialisation envoyé."
+                    }
+                }
+            },
+            400: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean", "example": False},
+                    "message": {"type": "string"}
+                }
+            },
+            404: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean", "example": False},
+                    "message": {"type": "string", "example": "Email non trouvé."}
+                }
+            }
+        }
+    )
+    @action(detail=False, methods=["post"])
+    def forgotten_password(self, request: Request):
+        """Gère la réinitialisation du mot de passe de l'administrateur."""
+        email = request.data.get("email")
+
+        if not email:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Email est requis.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        from authentification.services import generate_reset_token, send_password_reset_email, load_admin_data
+
+        admin = load_admin_data()
+        if email != admin.get("email"):
+            return Response(
+                {
+                    "success": False,
+                    "message": "Email non trouvé.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        token = generate_reset_token(email)
+        send_password_reset_email(email, token)
+
+        return Response({"message": "Email de réinitialisation envoyé."}, status=status.HTTP_200_OK)
+    
+    @extend_schema(
+        description="Réinitialise le mot de passe de l'administrateur à partir d'un token valide",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "example": "eyJhbGciOi..."
+                    },
+                    "new_password": {
+                        "type": "string",
+                        "example": "NewSecurePassword123!"
+                    }
+                },
+                "required": ["token", "new_password"]
+            }
+        },
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean", "example": True},
+                    "message": {
+                        "type": "string",
+                        "example": "Mot de passe réinitialisé avec succès."
+                    }
+                }
+            },
+            400: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean", "example": False},
+                    "message": {"type": "string"}
+                }
+            }
+        }
+    )
+    @action(detail=False, methods=["post"])
+    def reset_password(self, request: Request):
+        """Gère la réinitialisation du mot de passe de l'administrateur à partir du token."""
+        token = request.data.get("token")
+        new_password = request.data.get("new_password")
+
+        if not token or not new_password:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Token et nouveau mot de passe sont requis.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        from authentification.services import verify_reset_token, update_admin_credentials
+
+        email = verify_reset_token(token)
+        if not email:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Token invalide ou expiré.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        update_admin_credentials(email, new_password)
+        return Response(
+            {
+                "success": True,
+                "message": "Mot de passe réinitialisé avec succès.",
+            },
+            status=status.HTTP_200_OK,
+        )
