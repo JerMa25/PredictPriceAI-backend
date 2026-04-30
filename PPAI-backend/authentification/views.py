@@ -12,7 +12,7 @@ from authentification.services import (
 )
 
 
-class AuthenticationViewSet(viewsets.ViewSet):
+class AuthentificationViewSet(viewsets.ViewSet):
     """
     API endpoints pour l'authentification de l'administrateur.
     """

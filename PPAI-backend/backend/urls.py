@@ -16,12 +16,16 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path, include
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
+
+def home(request):
+    return JsonResponse({"message": "Welcome to the PredictPriceAI API!"})
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -39,4 +43,5 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
+    path('', home),
 ]
