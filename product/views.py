@@ -7,6 +7,8 @@ from product.services import (
     get_all_products,
     get_product_by_id,
     get_products_by_market,
+    products_count,
+    products_count_by_market,
 )
 
 
@@ -201,6 +203,100 @@ class ProductViewSet(viewsets.ViewSet):
                 "market_id": market_id_int,
                 "count": len(products),
                 "data": products,
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+    @extend_schema(
+        description="Retourne le nombre total de produits uniques dans le dataset",
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean"},
+                    "count": {"type": "integer"},
+                },
+            },
+            500: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean"},
+                    "message": {"type": "string"},
+                },
+            },
+        },
+    )
+    @action(detail=False, methods=["get"], url_path="count")
+    def count(self, request: Request):
+        """Retourne le nombre total de produits uniques."""
+        count = products_count()
+
+        if count == 0:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Erreur lors du calcul du nombre de produits.",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(
+            {
+                "success": True,
+                "count": count,
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+    @extend_schema(
+        description="Retourne le nombre de produits uniques dans un marché donné",
+        parameters=[
+            OpenApiParameter(
+                name="market_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description="Identifiant du marché",
+            )
+        ],
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean"},
+                    "market_id": {"type": "integer"},
+                    "count": {"type": "integer"},
+                },
+            },
+            400: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean"},
+                    "message": {"type": "string"},
+                },
+            },
+        },
+    )
+    @action(detail=False, methods=["get"], url_path=r"market/(?P<market_id>[0-9]+)/count")
+    def count_by_market(self, request: Request, market_id=None):
+        """Retourne le nombre de produits uniques dans un marché donné."""
+        try:
+            market_id_int = int(market_id)
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "success": False,
+                    "message": "Le market_id doit être un entier.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        count = products_count_by_market(market_id_int)
+
+        return Response(
+            {
+                "success": True,
+                "market_id": market_id_int,
+                "count": count,
             },
             status=status.HTTP_200_OK,
         )

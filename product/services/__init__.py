@@ -84,3 +84,25 @@ def get_products_by_market(market_id: int) -> list[dict]:
         return products
     except Exception:
         return []
+
+def products_count():
+    """Retourne le nombre total de produits uniques."""
+    try:
+        df = load_dataframe()
+        count = df["commodity"].nunique()
+        return count
+    except Exception:
+        return 0
+    
+def products_count_by_market(market_id: int) -> int:
+    """Retourne le nombre de produits uniques dans un marché donné."""
+    try:
+        df = load_dataframe()
+        match = df[df["market_id"] == market_id]
+        print(match)
+        if match.empty:
+            return 0
+        count = int(match["commodity"].nunique())
+        return count
+    except Exception:
+        return 0
