@@ -1,9 +1,10 @@
 import json
 import os
 import bcrypt
+from threading import Thread
 from itsdangerous import URLSafeTimedSerializer
 from django.conf import settings
-import resend
+from django.core.mail import send_mail
 
 SECRET_KEY = settings.SECRET_KEY
 serializer = URLSafeTimedSerializer(SECRET_KEY)
@@ -83,53 +84,74 @@ def verify_reset_token(token: str, expiration=3600) -> str:
         return None
     
 def send_password_reset_email(email: str, token: str) -> bool:
-    """Envoie un email de réinitialisation de mot de passe via Resend."""
-    try:
-        # Initialiser le client Resend
-        resend.api_key = settings.RESEND_API_KEY
-        
-        if not settings.RESEND_API_KEY:
-            print("Error: RESEND_API_KEY is not configured")
-            return False
-        
-        reset_link = f"https://predictpriceai-backend-production.up.railway.app/reset-password?token={token}"
-        
-        # Envoyer l'email avec Resend
-        email_response = resend.Emails.send({
-            "from": settings.RESEND_FROM_EMAIL,
-            "to": email,
-            "subject": "Password Reset Request - PredictPrice AI",
-            "html": f"""
-                <html>
-                    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-                            <h2>Password Reset Request</h2>
-                            <p>You have requested to reset your password for your PredictPrice AI account.</p>
-                            <p>Click the link below to reset your password:</p>
-                            <p style="margin: 20px 0;">
-                                <a href="{reset_link}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
-                                    Reset Password
-                                </a>
-                            </p>
-                            <p>Or copy and paste this link in your browser:</p>
-                            <p style="word-break: break-all; color: #666;">{reset_link}</p>
-                            <p style="margin-top: 20px; font-size: 12px; color: #999;">
-                                This link will expire in 1 hour.<br>
-                                If you did not request a password reset, please ignore this email.
-                            </p>
-                        </div>
-                    </body>
-                </html>
-            """
-        })
-        
-        if email_response.get("id"):
-            print(f"Password reset email sent successfully to {email}")
-            return True
-        else:
-            print(f"Error sending password reset email: {email_response}")
-            return False
+    """
+    Envoie un email de réinitialisation de mot de passe de manière asynchrone.
+    
+    Cette fonction lance l'envoi d'email dans un thread séparé et retourne
+    immédiatement, sans bloquer la requête HTTP.
+    
+    Args:
+        email: Email de l'administrateur
+        token: Token de réinitialisation
+    
+    Returns:
+        bool: True si la tâche a été lancée avec succès
+    """
+    def send_async():
+        """Envoie l'email dans un thread séparé via Gmail SMTP."""
+        try:
+            reset_link = f"https://predictpriceai-backend-production.up.railway.app/reset-password?token={token}"
+            subject = "Password Reset Request - PredictPrice AI"
+            message = f"""
+            Click the link below to reset your password:
             
+            {reset_link}
+            
+            This link will expire in 1 hour.
+            
+            If you did not request a password reset, please ignore this email.
+            """
+            
+            html_message = f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                    <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                        <h2>Password Reset Request</h2>
+                        <p>You have requested to reset your password for your PredictPrice AI account.</p>
+                        <p>Click the link below to reset your password:</p>
+                        <p style="margin: 20px 0;">
+                            <a href="{reset_link}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">
+                                Reset Password
+                            </a>
+                        </p>
+                        <p>Or copy and paste this link in your browser:</p>
+                        <p style="word-break: break-all; color: #666;">{reset_link}</p>
+                        <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                            This link will expire in 1 hour.<br>
+                            If you did not request a password reset, please ignore this email.
+                        </p>
+                    </div>
+                </body>
+            </html>
+            """
+            
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[email],
+                fail_silently=False,
+                html_message=html_message
+            )
+            print(f"Password reset email sent successfully to {email}")
+        except Exception as e:
+            print(f"Error sending password reset email: {str(e)}")
+    
+    try:
+        # Lancer l'envoi d'email dans un thread démon
+        thread = Thread(target=send_async, daemon=True)
+        thread.start()
+        return True
     except Exception as e:
-        print(f"Error sending password reset email: {str(e)}")
+        print(f"Error creating email thread: {str(e)}")
         return False

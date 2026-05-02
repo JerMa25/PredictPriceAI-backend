@@ -157,15 +157,11 @@ CORS_ALLOW_CREDENTIALS = True
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Email Configuration
+# Email Configuration (Gmail SMTP)
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'tchamijerry@gmail.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'wkxe mujb tmec mizv')
-
-# Resend Configuration
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', 're_AXxU5bv3_2jiUcWu4Pz8sw1DVcUc2LZW7')
-RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
 

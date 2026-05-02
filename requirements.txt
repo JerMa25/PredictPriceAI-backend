@@ -15,9 +15,7 @@ cryptography==45.0.0
 # Database / ORM utilities
 SQLAlchemy==2.0.36
 
-# Caching / async tasks
-redis==5.2.1
-celery==5.4.0
+
 
 # HTTP / networking
 requests==2.32.3
@@ -49,8 +47,7 @@ pydantic-settings==2.6.1
 pandas==2.2.2
 numpy==1.26.4
 
-# Email service
-resend
+
 
 # File handling
 openpyxl==3.1.5
