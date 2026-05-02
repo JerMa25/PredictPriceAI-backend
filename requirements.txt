@@ -15,11 +15,12 @@ cryptography==45.0.0
 # Database / ORM utilities
 SQLAlchemy==2.0.36
 
-
-
 # HTTP / networking
 requests==2.32.3
 urllib3==2.3.0
+
+# Email service - Brevo (anciennement Sendinblue)
+sib-api-v3-sdk
 
 # Environment management
 python-dotenv==1.2.2
@@ -46,8 +47,8 @@ pydantic==2.10.6
 pydantic-settings==2.6.1
 pandas==2.2.2
 numpy==1.26.4
-
-
+bcrypt==4.1.2
+itsdangerous==2.1.2
 
 # File handling
 openpyxl==3.1.5
@@ -57,8 +58,6 @@ sentry-sdk==2.19.2
 
 whitenoise==6.12.0
 django-redis==5.4.0
-bcrypt==4.1.2
-itsdangerous==2.2.0
 
 joblib
 scikit-learn

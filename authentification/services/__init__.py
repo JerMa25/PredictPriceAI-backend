@@ -1,10 +1,10 @@
 import json
 import os
 import bcrypt
+import requests
 from threading import Thread
 from itsdangerous import URLSafeTimedSerializer
 from django.conf import settings
-from django.core.mail import send_mail
 
 SECRET_KEY = settings.SECRET_KEY
 serializer = URLSafeTimedSerializer(SECRET_KEY)
@@ -85,7 +85,7 @@ def verify_reset_token(token: str, expiration=3600) -> str:
     
 def send_password_reset_email(email: str, token: str) -> bool:
     """
-    Envoie un email de réinitialisation de mot de passe de manière asynchrone.
+    Envoie un email de réinitialisation de mot de passe de manière asynchrone via Brevo.
     
     Cette fonction lance l'envoi d'email dans un thread séparé et retourne
     immédiatement, sans bloquer la requête HTTP.
@@ -98,26 +98,15 @@ def send_password_reset_email(email: str, token: str) -> bool:
         bool: True si la tâche a été lancée avec succès
     """
     def send_async():
-        """Envoie l'email dans un thread séparé via Gmail SMTP."""
+        """Envoie l'email via l'API Brevo dans un thread séparé."""
         try:
-            # Vérifier que les paramètres SMTP sont configurés
-            if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
-                print("ERROR: EMAIL_HOST_USER or EMAIL_HOST_PASSWORD not configured")
-                print(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
-                print(f"EMAIL_HOST_PASSWORD: {'*' * 5 if settings.EMAIL_HOST_PASSWORD else 'NOT SET'}")
+            # Vérifier que la clé API Brevo est configurée
+            if not settings.BREVO_API_KEY:
+                print("ERROR: BREVO_API_KEY not configured")
                 return False
             
             reset_link = f"https://predictpriceai-backend-production.up.railway.app/reset-password?token={token}"
             subject = "Password Reset Request - PredictPrice AI"
-            message = f"""
-            Click the link below to reset your password:
-            
-            {reset_link}
-            
-            This link will expire in 1 hour.
-            
-            If you did not request a password reset, please ignore this email.
-            """
             
             html_message = f"""
             <html>
@@ -142,23 +131,61 @@ def send_password_reset_email(email: str, token: str) -> bool:
             </html>
             """
             
-            print(f"Attempting to send password reset email to {email}")
-            print(f"SMTP Configuration: HOST={settings.EMAIL_HOST}:{settings.EMAIL_PORT}, USE_SSL={settings.EMAIL_USE_SSL}, USE_TLS={settings.EMAIL_USE_TLS}")
+            # Préparer la requête pour l'API Brevo
+            url = "https://api.brevo.com/v3/smtp/email"
+            headers = {
+                "accept": "application/json",
+                "content-type": "application/json",
+                "api-key": settings.BREVO_API_KEY,
+            }
             
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.EMAIL_HOST_USER,
-                recipient_list=[email],
-                fail_silently=False,
-                html_message=html_message
-            )
-            print(f"Password reset email sent successfully to {email}")
+            payload = {
+                "sender": {
+                    "name": settings.BREVO_SENDER_NAME,
+                    "email": settings.BREVO_SENDER_EMAIL,
+                },
+                "to": [
+                    {
+                        "email": email,
+                        "name": "Administrator",
+                    }
+                ],
+                "subject": subject,
+                "htmlContent": html_message,
+                "replyTo": {
+                    "email": settings.BREVO_SENDER_EMAIL,
+                    "name": settings.BREVO_SENDER_NAME,
+                },
+                "params": {
+                    "reset_link": reset_link,
+                },
+            }
+            
+            print(f"Attempting to send password reset email to {email} via Brevo API")
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            
+            if response.status_code in [200, 201]:
+                print(f"Password reset email sent successfully to {email}")
+                print(f"Response: {response.json()}")
+                return True
+            else:
+                print(f"Failed to send email. Status: {response.status_code}")
+                print(f"Response: {response.text}")
+                return False
+                
+        except requests.exceptions.Timeout:
+            print(f"ERROR: Request to Brevo API timed out")
+            return False
+        except requests.exceptions.ConnectionError as e:
+            print(f"ERROR: Connection error with Brevo API: {str(e)}")
+            return False
         except Exception as e:
             import traceback
-            print(f"Error sending password reset email: {str(e)}")
+            print(f"ERROR: Unexpected error sending password reset email: {str(e)}")
             print(f"Exception type: {type(e).__name__}")
             print(f"Traceback: {traceback.format_exc()}")
+            return False
     
     try:
         # Lancer l'envoi d'email dans un thread démon
@@ -167,6 +194,6 @@ def send_password_reset_email(email: str, token: str) -> bool:
         return True
     except Exception as e:
         import traceback
-        print(f"Error creating email thread: {str(e)}")
+        print(f"ERROR: Error creating email thread: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
         return False
