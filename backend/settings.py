@@ -167,5 +167,5 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'wkxe mujb tmec mizv
 
 # Resend Configuration
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', 're_AXxU5bv3_2jiUcWu4Pz8sw1DVcUc2LZW7')
-RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'noreply@predictpriceai.com')
+RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'tchamijerry@gmail.com')
 
