@@ -44,5 +44,6 @@ urlpatterns = [
         name="redoc",
     ),
     path("api/", include("product.urls")),
+    path("api/", include("model.urls")),
     path('', home),
 ]
