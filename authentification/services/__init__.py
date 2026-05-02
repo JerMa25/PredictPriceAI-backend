@@ -100,6 +100,13 @@ def send_password_reset_email(email: str, token: str) -> bool:
     def send_async():
         """Envoie l'email dans un thread séparé via Gmail SMTP."""
         try:
+            # Vérifier que les paramètres SMTP sont configurés
+            if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+                print("ERROR: EMAIL_HOST_USER or EMAIL_HOST_PASSWORD not configured")
+                print(f"EMAIL_HOST_USER: {settings.EMAIL_HOST_USER}")
+                print(f"EMAIL_HOST_PASSWORD: {'*' * 5 if settings.EMAIL_HOST_PASSWORD else 'NOT SET'}")
+                return False
+            
             reset_link = f"https://predictpriceai-backend-production.up.railway.app/reset-password?token={token}"
             subject = "Password Reset Request - PredictPrice AI"
             message = f"""
@@ -135,6 +142,9 @@ def send_password_reset_email(email: str, token: str) -> bool:
             </html>
             """
             
+            print(f"Attempting to send password reset email to {email}")
+            print(f"SMTP Configuration: HOST={settings.EMAIL_HOST}:{settings.EMAIL_PORT}, USE_SSL={settings.EMAIL_USE_SSL}, USE_TLS={settings.EMAIL_USE_TLS}")
+            
             send_mail(
                 subject=subject,
                 message=message,
@@ -145,7 +155,10 @@ def send_password_reset_email(email: str, token: str) -> bool:
             )
             print(f"Password reset email sent successfully to {email}")
         except Exception as e:
+            import traceback
             print(f"Error sending password reset email: {str(e)}")
+            print(f"Exception type: {type(e).__name__}")
+            print(f"Traceback: {traceback.format_exc()}")
     
     try:
         # Lancer l'envoi d'email dans un thread démon
@@ -153,5 +166,7 @@ def send_password_reset_email(email: str, token: str) -> bool:
         thread.start()
         return True
     except Exception as e:
+        import traceback
         print(f"Error creating email thread: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         return False
