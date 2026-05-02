@@ -89,4 +89,7 @@ def send_password_reset_email(email: str, token: str) -> None:
     from_email = settings.EMAIL_HOST_USER
     recipient_list = [email]
     
-    send_mail(subject, message, from_email, recipient_list, fail_silently=False)
+    try:
+        send_mail(subject, message, from_email, recipient_list, fail_silently=False)
+    except Exception as e:
+        print(f"Error sending password reset email: {str(e)}")
