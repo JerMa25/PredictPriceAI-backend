@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.request import Request
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, OpenApiExample
 from product.services import (
     get_all_products,
     get_product_by_id,
@@ -11,115 +11,130 @@ from product.services import (
     products_count_by_market,
 )
 
+# ── Réponses réutilisables ────────────────────────────────────────────────────
+_PRODUCT_OBJECT = {
+    "type": "object",
+    "properties": {
+        "id":        {"type": "integer", "example": 1},
+        "name":      {"type": "string",  "example": "Maize (white)"},
+        "market_id": {"type": "integer", "example": 3},
+    },
+}
+_RESPONSE_ERROR = {
+    "type": "object",
+    "properties": {
+        "success": {"type": "boolean", "example": False},
+        "message": {"type": "string"},
+    },
+}
+
 
 class ProductViewSet(viewsets.ViewSet):
     """
-    API endpoints pour la récupération des produits depuis le modèle ML.
+    API endpoints pour la récupération des produits depuis le dataset WFP.
     """
 
     @extend_schema(
-        description="Retourne la liste de tous les produits disponibles dans le modèle ML",
+        tags=["Produits"],
+        summary="Liste de tous les produits",
+        description=(
+            "Retourne la liste complète des produits agricoles disponibles dans le dataset WFP. "
+            "Chaque produit est identifié par un `id`, un `name` et le `market_id` du marché associé."
+        ),
         responses={
             200: {
                 "type": "object",
                 "properties": {
-                    "success": {"type": "boolean"},
-                    "data": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {"type": "integer", "example": 1},
-                                "name": {"type": "string", "example": "Tomate"},
-                                "market_id": {"type": "integer", "example": 3},
-                            },
-                        },
-                    },
-                    "count": {"type": "integer"},
+                    "success": {"type": "boolean", "example": True},
+                    "count":   {"type": "integer", "example": 55},
+                    "data":    {"type": "array", "items": _PRODUCT_OBJECT},
                 },
             },
-            500: {
-                "type": "object",
-                "properties": {
-                    "success": {"type": "boolean"},
-                    "message": {"type": "string"},
-                },
-            },
+            500: _RESPONSE_ERROR,
         },
+        examples=[
+            OpenApiExample(
+                "Succès",
+                value={
+                    "success": True,
+                    "count": 2,
+                    "data": [
+                        {"id": 1, "name": "Maize (white)", "market_id": 3},
+                        {"id": 2, "name": "Rice (local)",  "market_id": 5},
+                    ],
+                },
+                response_only=True, status_codes=["200"],
+            ),
+            OpenApiExample(
+                "Erreur serveur",
+                value={"success": False, "message": "Erreur lors du chargement des produits."},
+                response_only=True, status_codes=["500"],
+            ),
+        ],
     )
     def list(self, request: Request):
-        """Retourne tous les produits avec leur id et leur market_id."""
+        """GET /products/ — Retourne tous les produits."""
         products = get_all_products()
 
         if products is None:
             return Response(
-                {
-                    "success": False,
-                    "message": "Erreur lors du chargement des produits.",
-                },
+                {"success": False, "message": "Erreur lors du chargement des produits."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         return Response(
-            {
-                "success": True,
-                "count": len(products),
-                "data": products,
-            },
+            {"success": True, "count": len(products), "data": products},
             status=status.HTTP_200_OK,
         )
 
     @extend_schema(
-        description="Retourne un produit par son identifiant",
+        tags=["Produits"],
+        summary="Récupérer un produit par ID",
+        description="Retourne les détails d'un produit spécifique à partir de son identifiant.",
         parameters=[
             OpenApiParameter(
                 name="id",
                 type=OpenApiTypes.INT,
                 location=OpenApiParameter.PATH,
-                description="Identifiant du produit",
+                description="Identifiant unique du produit",
             )
         ],
         responses={
             200: {
                 "type": "object",
                 "properties": {
-                    "success": {"type": "boolean"},
-                    "data": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "integer", "example": 1},
-                            "name": {"type": "string", "example": "Tomate"},
-                            "market_id": {"type": "integer", "example": 3},
-                        },
-                    },
+                    "success": {"type": "boolean", "example": True},
+                    "data":    _PRODUCT_OBJECT,
                 },
             },
-            400: {
-                "type": "object",
-                "properties": {
-                    "success": {"type": "boolean"},
-                    "message": {"type": "string"},
-                },
-            },
-            404: {
-                "type": "object",
-                "properties": {
-                    "success": {"type": "boolean"},
-                    "message": {"type": "string"},
-                },
-            },
+            400: _RESPONSE_ERROR,
+            404: _RESPONSE_ERROR,
         },
+        examples=[
+            OpenApiExample(
+                "Succès",
+                value={"success": True, "data": {"id": 1, "name": "Maize (white)", "market_id": 3}},
+                response_only=True, status_codes=["200"],
+            ),
+            OpenApiExample(
+                "ID invalide",
+                value={"success": False, "message": "L'identifiant doit être un entier."},
+                response_only=True, status_codes=["400"],
+            ),
+            OpenApiExample(
+                "Produit introuvable",
+                value={"success": False, "message": "Produit avec l'id 99 introuvable."},
+                response_only=True, status_codes=["404"],
+            ),
+        ],
     )
     def retrieve(self, request: Request, pk=None):
-        """Retourne un produit par son id."""
+        """GET /products/{id}/ — Retourne un produit par son ID."""
         try:
             product_id = int(pk)
         except (TypeError, ValueError):
             return Response(
-                {
-                    "success": False,
-                    "message": "L'identifiant doit être un entier.",
-                },
+                {"success": False, "message": "L'identifiant doit être un entier."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -127,23 +142,22 @@ class ProductViewSet(viewsets.ViewSet):
 
         if product is None:
             return Response(
-                {
-                    "success": False,
-                    "message": f"Produit avec l'id {product_id} introuvable.",
-                },
+                {"success": False, "message": f"Produit avec l'id {product_id} introuvable."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         return Response(
-            {
-                "success": True,
-                "data": product,
-            },
+            {"success": True, "data": product},
             status=status.HTTP_200_OK,
         )
 
     @extend_schema(
-        description="Retourne tous les produits disponibles dans un marché donné",
+        tags=["Produits"],
+        summary="Produits d'un marché",
+        description=(
+            "Retourne la liste de tous les produits disponibles dans un marché donné, "
+            "identifié par son `market_id`."
+        ),
         parameters=[
             OpenApiParameter(
                 name="market_id",
@@ -156,100 +170,100 @@ class ProductViewSet(viewsets.ViewSet):
             200: {
                 "type": "object",
                 "properties": {
-                    "success": {"type": "boolean"},
-                    "market_id": {"type": "integer"},
-                    "count": {"type": "integer"},
-                    "data": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": {"type": "integer", "example": 1},
-                                "name": {"type": "string", "example": "Tomate"},
-                                "market_id": {"type": "integer", "example": 3},
-                            },
-                        },
-                    },
+                    "success":   {"type": "boolean", "example": True},
+                    "market_id": {"type": "integer", "example": 3},
+                    "count":     {"type": "integer", "example": 12},
+                    "data":      {"type": "array", "items": _PRODUCT_OBJECT},
                 },
             },
-            400: {
-                "type": "object",
-                "properties": {
-                    "success": {"type": "boolean"},
-                    "message": {"type": "string"},
-                },
-            },
+            400: _RESPONSE_ERROR,
         },
+        examples=[
+            OpenApiExample(
+                "Succès",
+                value={
+                    "success":   True,
+                    "market_id": 3,
+                    "count":     2,
+                    "data": [
+                        {"id": 1, "name": "Maize (white)", "market_id": 3},
+                        {"id": 4, "name": "Tomatoes",      "market_id": 3},
+                    ],
+                },
+                response_only=True, status_codes=["200"],
+            ),
+            OpenApiExample(
+                "market_id invalide",
+                value={"success": False, "message": "Le market_id doit être un entier."},
+                response_only=True, status_codes=["400"],
+            ),
+        ],
     )
     @action(detail=False, methods=["get"], url_path=r"market/(?P<market_id>[0-9]+)")
     def by_market(self, request: Request, market_id=None):
-        """Retourne tous les produits d'un marché donné."""
+        """GET /products/market/{market_id}/ — Produits d'un marché."""
         try:
             market_id_int = int(market_id)
         except (TypeError, ValueError):
             return Response(
-                {
-                    "success": False,
-                    "message": "Le market_id doit être un entier.",
-                },
+                {"success": False, "message": "Le market_id doit être un entier."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         products = get_products_by_market(market_id_int)
 
         return Response(
-            {
-                "success": True,
-                "market_id": market_id_int,
-                "count": len(products),
-                "data": products,
-            },
+            {"success": True, "market_id": market_id_int, "count": len(products), "data": products},
             status=status.HTTP_200_OK,
         )
-    
+
     @extend_schema(
-        description="Retourne le nombre total de produits uniques dans le dataset",
+        tags=["Produits"],
+        summary="Nombre total de produits",
+        description="Retourne le nombre total de produits uniques présents dans le dataset.",
         responses={
             200: {
                 "type": "object",
                 "properties": {
-                    "success": {"type": "boolean"},
-                    "count": {"type": "integer"},
+                    "success": {"type": "boolean", "example": True},
+                    "count":   {"type": "integer", "example": 55},
                 },
             },
-            500: {
-                "type": "object",
-                "properties": {
-                    "success": {"type": "boolean"},
-                    "message": {"type": "string"},
-                },
-            },
+            500: _RESPONSE_ERROR,
         },
+        examples=[
+            OpenApiExample(
+                "Succès",
+                value={"success": True, "count": 55},
+                response_only=True, status_codes=["200"],
+            ),
+            OpenApiExample(
+                "Erreur serveur",
+                value={"success": False, "message": "Erreur lors du calcul du nombre de produits."},
+                response_only=True, status_codes=["500"],
+            ),
+        ],
     )
     @action(detail=False, methods=["get"], url_path="count")
     def count(self, request: Request):
-        """Retourne le nombre total de produits uniques."""
+        """GET /products/count/ — Nombre total de produits uniques."""
         count = products_count()
 
         if count == 0:
             return Response(
-                {
-                    "success": False,
-                    "message": "Erreur lors du calcul du nombre de produits.",
-                },
+                {"success": False, "message": "Erreur lors du calcul du nombre de produits."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         return Response(
-            {
-                "success": True,
-                "count": count,
-            },
+            {"success": True, "count": count},
             status=status.HTTP_200_OK,
         )
-    
+
     @extend_schema(
-        description="Retourne le nombre de produits uniques dans un marché donné",
+        tags=["Produits"],
+        summary="Nombre de produits dans un marché",
+        description="Retourne le nombre de produits uniques disponibles dans un marché donné.",
         parameters=[
             OpenApiParameter(
                 name="market_id",
@@ -262,41 +276,40 @@ class ProductViewSet(viewsets.ViewSet):
             200: {
                 "type": "object",
                 "properties": {
-                    "success": {"type": "boolean"},
-                    "market_id": {"type": "integer"},
-                    "count": {"type": "integer"},
+                    "success":   {"type": "boolean", "example": True},
+                    "market_id": {"type": "integer", "example": 3},
+                    "count":     {"type": "integer", "example": 12},
                 },
             },
-            400: {
-                "type": "object",
-                "properties": {
-                    "success": {"type": "boolean"},
-                    "message": {"type": "string"},
-                },
-            },
+            400: _RESPONSE_ERROR,
         },
+        examples=[
+            OpenApiExample(
+                "Succès",
+                value={"success": True, "market_id": 3, "count": 12},
+                response_only=True, status_codes=["200"],
+            ),
+            OpenApiExample(
+                "market_id invalide",
+                value={"success": False, "message": "Le market_id doit être un entier."},
+                response_only=True, status_codes=["400"],
+            ),
+        ],
     )
     @action(detail=False, methods=["get"], url_path=r"market/(?P<market_id>[0-9]+)/count")
     def count_by_market(self, request: Request, market_id=None):
-        """Retourne le nombre de produits uniques dans un marché donné."""
+        """GET /products/market/{market_id}/count/ — Nombre de produits dans un marché."""
         try:
             market_id_int = int(market_id)
         except (TypeError, ValueError):
             return Response(
-                {
-                    "success": False,
-                    "message": "Le market_id doit être un entier.",
-                },
+                {"success": False, "message": "Le market_id doit être un entier."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         count = products_count_by_market(market_id_int)
 
         return Response(
-            {
-                "success": True,
-                "market_id": market_id_int,
-                "count": count,
-            },
+            {"success": True, "market_id": market_id_int, "count": count},
             status=status.HTTP_200_OK,
         )
