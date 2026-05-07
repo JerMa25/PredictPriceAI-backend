@@ -155,6 +155,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "http://192.168.221.224:3011",  # Frontend URL
 ]
 
 CORS_ALLOW_CREDENTIALS = True
