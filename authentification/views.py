@@ -156,13 +156,19 @@ class AuthentificationViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["post"])
     def change_credentials(self, request: Request):
         """Change les identifiants de l'administrateur."""
-        email            = request.data.get("email")
-        password         = request.data.get("password")
-        current_password = request.data.get("current_password")
+        email            = request.data.get("email").strip()
+        password         = request.data.get("password").strip()
+        current_password = request.data.get("current_password").strip()
 
-        if not email or not password or not current_password:
+        if not email and not password:
             return Response(
-                {"success": False, "message": "Tous les champs sont requis."},
+                {"success": False, "message": "Email ou mot de passe requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        if password and not current_password:
+            return Response(
+                {"success": False, "message": "Le mot de passe actuel est requis pour changer le mot de passe."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
