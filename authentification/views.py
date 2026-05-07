@@ -38,13 +38,14 @@ class AuthentificationViewSet(viewsets.ViewSet):
     API endpoints pour l'authentification de l'administrateur PredictPrice AI.
     """
 
+    @permission_classes([AllowAny])
     @extend_schema(
         tags=["Authentification"],
         summary="Connexion administrateur",
         description=(
             "Authentifie l'administrateur avec son email et son mot de passe. "
             "Les credentials sont stockés dans `core/config/admin.json`. "
-            "En cas de succès, une session est créée côté serveur."
+            "En cas de succès, un JWT token est retourné."
         ),
         request={
             "application/json": {
@@ -57,40 +58,65 @@ class AuthentificationViewSet(viewsets.ViewSet):
             }
         },
         responses={
-            200: _RESPONSE_SUCCESS,
+            200: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean", "example": True},
+                    "message": {"type": "string"},
+                    "tokens": {
+                        "type": "object",
+                        "properties": {
+                            "access": {"type": "string"},
+                            "refresh": {"type": "string"},
+                        },
+                    },
+                },
+            },
             400: _RESPONSE_ERROR,
             401: _RESPONSE_ERROR,
         },
         examples=[
-            OpenApiExample("Succès",             value={"success": True,  "message": "Connexion réussie."},                response_only=True, status_codes=["200"]),
+            OpenApiExample("Succès",             value={"success": True,  "message": "Connexion réussie.", "tokens": {"access": "...", "refresh": "..."}},                response_only=True, status_codes=["200"]),
             OpenApiExample("Champs manquants",   value={"success": False, "message": "Email et mot de passe sont requis."}, response_only=True, status_codes=["400"]),
             OpenApiExample("Mauvais credentials",value={"success": False, "message": "Email ou mot de passe incorrect."},   response_only=True, status_codes=["401"]),
         ],
     )
     @action(detail=False, methods=["post"])
     def login(self, request: Request):
-        """Connecte l'administrateur avec ses identifiants."""
-        email    = request.data.get("email")
-        password = request.data.get("password")
+        """Connecte l'administrateur avec ses identifiants et retourne un JWT token."""
+        try:
+            email    = request.data.get("email")
+            password = request.data.get("password")
 
-        if not email or not password:
+            if not email or not password:
+                return Response(
+                    {"success": False, "message": "Email et mot de passe sont requis."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if verify_admin_credentials(email, password):
+                tokens = generate_jwt_tokens()
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Connexion réussie.",
+                        "tokens": tokens,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
             return Response(
-                {"success": False, "message": "Email et mot de passe sont requis."},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"success": False, "message": "Email ou mot de passe incorrect."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        except Exception as e:
+            logger.exception(f"Login error: {str(e)}")
+            return Response(
+                {"success": False, "message": "Une erreur serveur s'est produite."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        if verify_admin_credentials(email, password):
-            admin_login_session(request)
-            return Response(
-                {"success": True, "message": "Connexion réussie."},
-                status=status.HTTP_200_OK,
-            )
-
-        return Response(
-            {"success": False, "message": "Email ou mot de passe incorrect."},
-            status=status.HTTP_401_UNAUTHORIZED,
-        )
-
+    @permission_classes([AllowAny])
     @extend_schema(
         tags=["Authentification"],
         summary="Déconnexion administrateur",
@@ -102,7 +128,7 @@ class AuthentificationViewSet(viewsets.ViewSet):
             OpenApiExample("Succès", value={"success": True, "message": "Déconnexion réussie."}, response_only=True, status_codes=["200"]),
         ],
     )
-    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    @action(detail=False, methods=["post"])
     def logout(self, request: Request):
         """Déconnecte l'administrateur (stateless - JWT logout)."""
         return Response(
@@ -110,6 +136,7 @@ class AuthentificationViewSet(viewsets.ViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @permission_classes([AllowAny])
     @extend_schema(
         tags=["Authentification"],
         summary="Modifier les identifiants admin",
@@ -141,7 +168,7 @@ class AuthentificationViewSet(viewsets.ViewSet):
             OpenApiExample("Erreur mise à jour",       value={"success": False, "message": "Erreur lors de la mise à jour des identifiants."}, response_only=True, status_codes=["400"]),
         ],
     )
-    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
+    @action(detail=False, methods=["post"])
     def change_credentials(self, request: Request):
         """Change les identifiants de l'administrateur."""
         email            = request.data.get("email")
@@ -170,7 +197,7 @@ class AuthentificationViewSet(viewsets.ViewSet):
             {"success": False, "message": "Erreur lors de la mise à jour des identifiants."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-
+permission_classes([AllowAny])
     @extend_schema(
         tags=["Authentification"],
         summary="Mot de passe oublié",
@@ -199,6 +226,7 @@ class AuthentificationViewSet(viewsets.ViewSet):
             OpenApiExample("Email introuvable",value={"success": False, "message": "Email non trouvé."},               response_only=True, status_codes=["404"]),
         ],
     )
+    @action(detail=False, methods=["post"
     @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def forgotten_password(self, request: Request):
         """Envoie un email de réinitialisation du mot de passe."""
