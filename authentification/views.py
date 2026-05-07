@@ -1,5 +1,7 @@
+import logging
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.request import Request
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, OpenApiExample
@@ -9,7 +11,10 @@ from authentification.services import (
     admin_login_session,
     admin_logout_session,
     verify_admin_password,
+    generate_jwt_tokens,
 )
+
+logger = logging.getLogger(__name__)
 
 # ── Réponses réutilisables ────────────────────────────────────────────────────
 _RESPONSE_SUCCESS = {
