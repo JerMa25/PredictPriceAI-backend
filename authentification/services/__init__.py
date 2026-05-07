@@ -5,6 +5,9 @@ import requests
 from threading import Thread
 from itsdangerous import URLSafeTimedSerializer
 from django.conf import settings
+from rest_framework_simplejwt.tokens import RefreshToken
+from datetime import timedelta
+from django.utils import timezone
 
 SECRET_KEY = settings.SECRET_KEY
 serializer = URLSafeTimedSerializer(SECRET_KEY)
@@ -58,16 +61,29 @@ def update_admin_credentials(email: str, password: str) -> None:
         return False
     
 def is_admin_logged_in(request) -> bool:
-    """Vérifie si l'administrateur est connecté en vérifiant la session."""
-    return request.session.get("admin_logged_in", False)
+    """Vérifie si l'administrateur est connecté via JWT."""
+    return hasattr(request, 'user') and request.user.is_authenticated
+
+def generate_jwt_tokens() -> dict:
+    """Génère une paire de tokens JWT (access + refresh) pour l'administrateur."""
+    # Créer un objet utilisateur fictif pour générer les tokens
+    refresh = RefreshToken()
+    # Ajouter des données personnalisées au token
+    refresh['admin'] = True
+    refresh['email'] = None  # Will be set by caller if needed
+    
+    return {
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+    }
 
 def admin_login_session(request) -> None:
-    """Démarre une session pour l'administrateur après une connexion réussie."""
-    request.session["admin_logged_in"] = True
+    """Deprecated - kept for backward compatibility. Use JWT tokens instead."""
+    pass
 
 def admin_logout_session(request) -> None:
-    """Termine la session de l'administrateur lors de la déconnexion."""
-    request.session.flush()
+    """Deprecated - kept for backward compatibility. JWT logout is stateless."""
+    pass
 
 def generate_reset_token(email: str) -> str:
     return serializer.dumps(email, salt='reset-password')

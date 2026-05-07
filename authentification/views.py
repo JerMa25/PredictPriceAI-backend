@@ -89,7 +89,7 @@ class AuthentificationViewSet(viewsets.ViewSet):
     @extend_schema(
         tags=["Authentification"],
         summary="Déconnexion administrateur",
-        description="Supprime la session active de l'administrateur.",
+        description="Stateless logout - le JWT token devient invalide après son expiration.",
         responses={
             200: _RESPONSE_SUCCESS,
         },
@@ -97,10 +97,9 @@ class AuthentificationViewSet(viewsets.ViewSet):
             OpenApiExample("Succès", value={"success": True, "message": "Déconnexion réussie."}, response_only=True, status_codes=["200"]),
         ],
     )
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def logout(self, request: Request):
-        """Déconnecte l'administrateur."""
-        admin_logout_session(request)
+        """Déconnecte l'administrateur (stateless - JWT logout)."""
         return Response(
             {"success": True, "message": "Déconnexion réussie."},
             status=status.HTTP_200_OK,
@@ -137,7 +136,7 @@ class AuthentificationViewSet(viewsets.ViewSet):
             OpenApiExample("Erreur mise à jour",       value={"success": False, "message": "Erreur lors de la mise à jour des identifiants."}, response_only=True, status_codes=["400"]),
         ],
     )
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def change_credentials(self, request: Request):
         """Change les identifiants de l'administrateur."""
         email            = request.data.get("email")
@@ -195,7 +194,7 @@ class AuthentificationViewSet(viewsets.ViewSet):
             OpenApiExample("Email introuvable",value={"success": False, "message": "Email non trouvé."},               response_only=True, status_codes=["404"]),
         ],
     )
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny])
     def forgotten_password(self, request: Request):
         """Envoie un email de réinitialisation du mot de passe."""
         email = request.data.get("email")
