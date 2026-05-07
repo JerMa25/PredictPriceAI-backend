@@ -172,11 +172,12 @@ class AuthentificationViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not verify_admin_password(current_password):
-            return Response(
-                {"success": False, "message": "Mot de passe actuel incorrect."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+        if password:
+            if not verify_admin_password(current_password):
+                return Response(
+                    {"success": False, "message": "Mot de passe actuel incorrect."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
         if update_admin_credentials(email, password):
             return Response(
