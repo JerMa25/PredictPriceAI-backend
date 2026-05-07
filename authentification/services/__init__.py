@@ -124,7 +124,7 @@ def send_password_reset_email(email: str, token: str) -> bool:
                 print("ERROR: BREVO_API_KEY not configured")
                 return False
             
-            reset_link = f"https://predictpriceai-backend-production.up.railway.app/reset-password?token={token}"
+            reset_link = f"https://predictpriceai-backend-production.up.railway.app/api/auth/reset_password/?token={token}"
             subject = "Password Reset Request - PredictPrice AI"
             
             html_message = f"""
