@@ -156,13 +156,17 @@ class AuthentificationViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["post"])
     def change_credentials(self, request: Request):
         """Change les identifiants de l'administrateur."""
-        email            = request.data.get("email", "").strip()
-        password         = request.data.get("password", "").strip()
-        current_password = request.data.get("current_password", "").strip()
+        email            = request.data.get("email")
+        password         = request.data.get("password")
+        current_password = request.data.get("current_password")
+
+        email = email.strip() if email else None
+        password = password.strip() if password else None
+        current_password = current_password.strip() if current_password else None
 
         if not email and not password:
             return Response(
-                {"success": False, "message": "Fournir au moins un nouvel email ou un nouveaumot de passe."},
+                {"success": False, "message": "Fournir au moins un champ à modifier."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         
@@ -172,12 +176,11 @@ class AuthentificationViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if password:
-            if not verify_admin_password(current_password):
-                return Response(
-                    {"success": False, "message": "Mot de passe actuel incorrect."},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
+        if password and not verify_admin_password(current_password):
+            return Response(
+                {"success": False, "message": "Mot de passe actuel incorrect."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
         if update_admin_credentials(email, password):
             return Response(

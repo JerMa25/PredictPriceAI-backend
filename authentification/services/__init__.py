@@ -47,12 +47,15 @@ def verify_admin_password(password: str) -> bool:
     except Exception:
         return False
     
-def update_admin_credentials(email: str, password: str) -> None:
+def update_admin_credentials(email: str, password: str) -> bool:
     """Met à jour les identifiants de l'administrateur dans le fichier JSON."""
     try:
         admin_data = load_admin_data()
-        admin_data["email"] = email
-        admin_data["password"] = hash_password(password)
+
+        if email:
+            admin_data["email"] = email
+        if password:
+            admin_data["password"] = hash_password(password)
 
         with open(ADMIN_DATA_PATH, 'w', encoding='utf-8') as f:
             json.dump(admin_data, f, indent=2)
