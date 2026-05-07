@@ -32,7 +32,7 @@ def verify_admin_credentials(email: str, password: str) -> bool:
             
         stored_hash = admin_data.get("password", "")
         return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
-    except (FileNotFoundError, KeyError, ValueError):
+    except Exception:
         return False
 
 def verify_admin_password(password: str) -> bool:
@@ -41,7 +41,7 @@ def verify_admin_password(password: str) -> bool:
         admin_data = load_admin_data()
         stored_hash = admin_data.get("password", "")
         return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
-    except (FileNotFoundError, KeyError, ValueError):
+    except Exception:
         return False
     
 def update_admin_credentials(email: str, password: str) -> None:
