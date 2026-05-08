@@ -61,8 +61,8 @@ class ProductViewSet(viewsets.ViewSet):
                     "success": True,
                     "count": 2,
                     "data": [
-                        {"id": 1, "name": "Maize (white)", "market_id": 3},
-                        {"id": 2, "name": "Rice (local)",  "market_id": 5},
+                        {"id": 1, "name": "Maize (white)", "market_id": 3, "market_name": "Market A", "category": "Cereals"},
+                        {"id": 2, "name": "Rice (local)",  "market_id": 5, "market_name": "Market C", "category": "Cereals"},
                     ],
                 },
                 response_only=True, status_codes=["200"],
@@ -115,7 +115,7 @@ class ProductViewSet(viewsets.ViewSet):
         examples=[
             OpenApiExample(
                 "Succès",
-                value={"success": True, "data": {"id": 1, "name": "Maize (white)", "market_id": 3}},
+                value={"success": True, "data": {"id": 1, "name": "Maize (white)", "market_id": 3, "market_name": "Market A", "category": "Cereals"}},
                 response_only=True, status_codes=["200"],
             ),
             OpenApiExample(
@@ -188,8 +188,8 @@ class ProductViewSet(viewsets.ViewSet):
                     "market_id": 3,
                     "count":     2,
                     "data": [
-                        {"id": 1, "name": "Maize (white)", "market_id": 3},
-                        {"id": 4, "name": "Tomatoes",      "market_id": 3},
+                        {"id": 1, "name": "Maize (white)", "market_id": 3, "market_name": "Market A", "category": "Cereals"},
+                        {"id": 4, "name": "Tomatoes",      "market_id": 3, "market_name": "Market B", "category": "Vegetables"},
                     ],
                 },
                 response_only=True, status_codes=["200"],
