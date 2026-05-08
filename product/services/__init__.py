@@ -18,13 +18,14 @@ def get_all_products() -> list[dict]:
     try:
         df = load_dataframe()
         products = (
-            df[["commodity_id", "commodity", "market_id", "market"]]
+            df[["commodity_id", "commodity", "market_id", "market", "category"]]
             .drop_duplicates(subset=["commodity_id", "market_id"])
             .rename(columns={
                 "commodity_id": "id",
                 "commodity": "name",
                 "market_id": "market_id",
                 "market": "market_name",
+                "category": "category",
             })
             .sort_values("id")
             .to_dict(orient="records")
@@ -44,13 +45,14 @@ def get_product_by_id(product_id: int) -> dict | None:
         if match.empty:
             return None
         row = (
-            match[["commodity_id", "commodity", "market_id", "market"]]
+            match[["commodity_id", "commodity", "market_id", "market", "category"]]
             .drop_duplicates(subset=["commodity_id"])
             .rename(columns={
                 "commodity_id": "id",
                 "commodity": "name",
                 "market_id": "market_id",
                 "market": "market_name",
+                "category": "category",
             })
             .iloc[0]
             .to_dict()
@@ -70,13 +72,14 @@ def get_products_by_market(market_id: int) -> list[dict]:
         if match.empty:
             return []
         products = (
-            match[["commodity_id", "commodity", "market_id", "market"]]
+            match[["commodity_id", "commodity", "market_id", "market", "category"]]
             .drop_duplicates(subset=["commodity_id"])
             .rename(columns={
                 "commodity_id": "id",
                 "commodity": "name",
                 "market_id": "market_id",
                 "market": "market_name",
+                "category": "category",
             })
             .sort_values("id")
             .to_dict(orient="records")

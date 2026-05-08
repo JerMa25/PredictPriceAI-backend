@@ -18,6 +18,8 @@ _PRODUCT_OBJECT = {
         "id":        {"type": "integer", "example": 1},
         "name":      {"type": "string",  "example": "Maize (white)"},
         "market_id": {"type": "integer", "example": 3},
+        "market_name": {"type": "string",  "example": "Market A"},
+        "category": {"type": "string",  "example": "Cereals"},
     },
 }
 _RESPONSE_ERROR = {
